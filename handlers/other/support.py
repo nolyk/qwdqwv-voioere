@@ -36,23 +36,29 @@ async def album_handler_moder(msg: Message, album: List[Message], state: FSM):
     async with BotDB() as db:
         settings = await db.getSettings()
 
-    logger.warning('до проверки')
+    # Skip General (thread_id 0 or 1) and special service threads
+    if replyUserID in [0, 1] or replyUserID in [settings.get('flood_message_thread_id'), settings.get('notification_message_thread_id')]:
+        return
 
-    if replyUserID not in [settings['flood_message_thread_id'], settings['notification_message_thread_id']]:
-        async with BotDB() as db:
-            user = await db.getUserThread(replyUserID)
-        mediaGroup = await createMediaGroup(album)
+    async with BotDB() as db:
+        user = await db.getUserThread(replyUserID)
 
-        logger.warning('чекнул базу')
-        
+    if not user:
+        logger.warning(f'User not found for thread_id={replyUserID}')
+        return
 
-        try:
-            await bot.send_media_group(user['user_id'], media = mediaGroup.build())
-            logger.warning('отправил')
+    mediaGroup = await createMediaGroup(album)
 
-        except Exception as e:
-            text = f'''⚠️ Не уадлось отправить сообщение пользователю, причина:\n{e}'''
-            await msg.answer(text)
+    if not mediaGroup:
+        logger.error(f'Failed to create media group for thread_id={replyUserID}')
+        return
+    
+    try:
+        await bot.send_media_group(user['user_id'], media = mediaGroup.build())
+        logger.info(f'Sent media group to user {user["user_id"]}')
+
+    except Exception as e:
+        logger.error(f'Failed to send media group to user {user.get("user_id")}: {e}')
 
 
 @moderRouter.message(IsChat())
@@ -61,24 +67,29 @@ async def sendUserMessageFunc(msg: Message, state: FSM):
 
     if msg.from_user.is_bot == True:
         return None
-    logger.info(msg.from_user.is_bot)
 
     replyUserID = msg.message_thread_id
 
     async with BotDB() as db:
         settings = await db.getSettings()
 
-    if replyUserID not in [settings['flood_message_thread_id'], settings['notification_message_thread_id']]:
+    # Skip General (thread_id 0 or 1) and special service threads
+    if replyUserID in [0, 1] or replyUserID in [settings.get('flood_message_thread_id'), settings.get('notification_message_thread_id')]:
+        return
 
-        async with BotDB() as db:
-            user = await db.getUserThread(replyUserID)
+    async with BotDB() as db:
+        user = await db.getUserThread(replyUserID)
 
-        try:
-            await bot.copy_message(user['user_id'], msg.chat.id, msg.message_id)  
+    if not user:
+        logger.warning(f'User not found for thread_id={replyUserID}')
+        return
 
-        except Exception as e:
-            text = f'''⚠️ Не уадлось отправить сообщение пользователю, причина:\n{e}'''
-            await msg.answer(text)
+    try:
+        await bot.copy_message(user['user_id'], msg.chat.id, msg.message_id)  
+        logger.info(f'Copied message to user {user["user_id"]}')
+
+    except Exception as e:
+        logger.error(f'Failed to copy message to user {user.get("user_id")}: {e}')
 
 
 @moderRouter.callback_query(IsChat(), F.data.startswith('usban_'))
@@ -90,4 +101,6 @@ async def mute_Func(call: CallbackQuery, state: FSM):
         await db.updateUserStatus(user_id, int(status), 'ban')
         user = await db.getUser(user_id)
 
-    await call.message.edit_reply_markup(reply_markup=userMute(user_id, user['ban']))
+    ban_val = user.get('ban', 0) if user else 0
+
+    await call.message.edit_reply_markup(reply_markup=userMute(user_id, ban_val))

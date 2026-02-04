@@ -52,13 +52,13 @@ async def album_handler(msg: Message, album: List[Message]):
         settings = await db.getSettings()
         user = await db.getUser(msg.from_user.id)
 
-    if settings['chat_id'] == None:
+    if not settings or settings.get('chat_id') is None:
 
         await errorMessage('не привязан чат', msg, bot)
 
         return msg.answer('🔴 Сейчас техническа поддержка недоступна, попробуйте позже')
 
-    if user['thread_id'] == None:
+    if not user or user.get('thread_id') is None:
 
         await createTopicUser(bot, msg, settings)
 
@@ -70,7 +70,8 @@ async def album_handler(msg: Message, album: List[Message]):
     if mediaGroup == False:
         return msg.answer('🔴 В сообщении присутствует запрещенный тип контента, сообщние небыло отправлено администрации')
     
-    await bot.send_media_group(settings['chat_id'], media = mediaGroup.build(), message_thread_id=user['thread_id'])
+    if user:
+        await bot.send_media_group(settings.get('chat_id'), media = mediaGroup.build(), message_thread_id=user.get('thread_id'))
 
 
 @userRouter.message(IsWork(), SuccessContentType())
@@ -80,16 +81,17 @@ async def sendMessageUser(msg: Message, bot: Bot):
         user = await db.getUser(msg.from_user.id)
         settings = await db.getSettings()
 
-    if settings['chat_id'] == None:
+    if not settings or settings.get('chat_id') is None:
 
         await errorMessage('не привязан чат', msg, bot)
 
         return msg.answer('🔴 Сейчас техническа поддержка недоступна, попробуйте позже')
 
-    if user['thread_id'] == None:
+    if not user or user.get('thread_id') is None:
         await createTopicUser(bot, msg, settings)
 
     async with BotDB() as db:
         user = await db.getUser(msg.from_user.id)
 
-    await bot.copy_message(settings['chat_id'], msg.from_user.id, msg.message_id, user['thread_id'])       
+    if user:
+        await bot.copy_message(settings.get('chat_id'), msg.from_user.id, msg.message_id, user.get('thread_id'))       

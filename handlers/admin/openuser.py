@@ -100,7 +100,11 @@ async def usadmin_Func(call: CallbackQuery, state: FSM, bot: Bot):
         await db.updateUserStatus(user_id, status, 'admin')
         user = await db.getUser(user_id)
 
-    key = userOpenKey(user_id, user['admin'], user['moderator'], user['ban'])
+    admin_val = user.get('admin', 0) if user else 0
+    moder_val = user.get('moderator', 0) if user else 0
+    ban_val = user.get('ban', 0) if user else 0
+
+    key = userOpenKey(user_id, admin_val, moder_val, ban_val)
     await call.message.edit_reply_markup(reply_markup=key)
 
     
@@ -114,7 +118,11 @@ async def usmoder_Func(call: CallbackQuery, state: FSM, bot: Bot):
         await db.updateUserStatus(user_id, status, 'moder')
         user = await db.getUser(user_id)
 
-    key = userOpenKey(user_id, user['admin'], user['moderator'], user['ban'])
+    admin_val = user.get('admin', 0) if user else 0
+    moder_val = user.get('moderator', 0) if user else 0
+    ban_val = user.get('ban', 0) if user else 0
+
+    key = userOpenKey(user_id, admin_val, moder_val, ban_val)
     await call.message.edit_reply_markup(reply_markup=key)
 
 
@@ -127,6 +135,10 @@ async def usban__Func(call: CallbackQuery, state: FSM, bot: Bot):
         await db.updateUserStatus(user_id, status, 'ban')
         user = await db.getUser(user_id)
 
-    key = userOpenKey(user_id, user['admin'], user['moderator'], user['ban'])
+    admin_val = user.get('admin', 0) if user else 0
+    moder_val = user.get('moderator', 0) if user else 0
+    ban_val = user.get('ban', 0) if user else 0
+
+    key = userOpenKey(user_id, admin_val, moder_val, ban_val)
     await call.message.edit_reply_markup(reply_markup=key)
 
